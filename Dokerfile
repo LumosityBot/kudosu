@@ -3,12 +3,31 @@ FROM node:18-slim
 
 # Installer les dépendances système pour Puppeteer
 RUN apt-get update \
-    && apt-get install -y wget gnupg \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf libxss1 \
-      --no-install-recommends \
+    && apt-get install -y \
+        fonts-liberation \
+        gconf-service \
+        libappindicator1 \
+        libasound2 \
+        libatk1.0-0 \
+        libcairo-gobject2 \
+        libdrm2 \
+        libfontconfig1 \
+        libgbm1 \
+        libgtk-3-0 \
+        libnspr4 \
+        libnss3 \
+        libx11-xcb1 \
+        libxcomposite1 \
+        libxcursor1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxi6 \
+        libxrandr2 \
+        libxss1 \
+        libxtst6 \
+        xdg-utils \
+        wget \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Créer le répertoire de travail
@@ -17,13 +36,13 @@ WORKDIR /app
 # Copier les fichiers de dépendances
 COPY package*.json ./
 
-# Installer les dépendances
-RUN npm install --production
+# Installer les dépendances et Chrome
+RUN npm install && npx puppeteer browsers install chrome
 
 # Copier le code source
 COPY . .
 
-# Exposer le port (même si ce n'est pas un serveur web traditionnel)
+# Exposer le port
 EXPOSE 3000
 
 # Définir l'utilisateur non-root pour la sécurité

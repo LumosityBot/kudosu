@@ -64,15 +64,12 @@ class SudokuBot {
           '--no-first-run',
           '--no-zygote',
           '--single-process',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
         ],
         timeout: config.timeout
       };
-
-      // Utiliser Chrome sur Render si disponible
-      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-      }
 
       this.browser = await puppeteer.launch(launchOptions);
 
