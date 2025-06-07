@@ -1,34 +1,21 @@
 {
-  "name": "sudoku-automation-bot",
+  "name": "sudoku-bot",
   "version": "1.0.0",
-  "description": "Bot d'automatisation pour résoudre des puzzles Sudoku",
+  "description": "Bot automatique pour résoudre des sudokus sur lumitelburundi.com",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "node test.js"
+    "install-chromium": "PUPPETEER_PRODUCT=chrome npm i puppeteer --unsafe-perm=true"
   },
   "dependencies": {
-    "axios": "^1.7.2",
-    "cheerio": "^1.0.0-rc.12",
-    "cron": "^3.1.7",
-    "dotenv": "^16.5.0",
-    "express": "^4.19.2",
-    "node-cron": "^4.1.0",
-    "puppeteer": "^24.10.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
+    "dotenv": "^16.0.3",
+    "node-cron": "^3.0.2",
+    "puppeteer": "^21.6.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "automation",
-    "sudoku",
-    "bot",
-    "puppeteer"
-  ],
-  "author": "Votre nom",
-  "license": "MIT"
+    "node": ">=18.x"
+  }
 }
