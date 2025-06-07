@@ -5,7 +5,7 @@ const readline = require('readline');
 const config = {
   sudokuSite: 'https://sudoku.lumitelburundi.com/game',
   solverSite: 'https://sudokuspoiler.com/sudoku/sudoku9',
-  headless: false, // Mettez à true pour le mode sans affichage
+  headless: true, // Mettez à true pour le mode sans affichage
   timeout: 60000,
   maxAttempts: 3,
   retryDelay: 10000
