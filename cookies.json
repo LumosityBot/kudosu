@@ -1,0 +1,16 @@
+[
+    {
+        "name": "FADC_Persistence_Cookie",
+        "value": "rs1|aEQSE",
+        "domain": "sudoku.lumitelburundi.com",
+        "hostOnly": true,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": true,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "storeId": null
+    }
+]

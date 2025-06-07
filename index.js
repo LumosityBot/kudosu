@@ -1,14 +1,19 @@
 const puppeteer = require('puppeteer');
-const readline = require('readline');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration
 const config = {
   sudokuSite: 'https://sudoku.lumitelburundi.com/game',
   solverSite: 'https://sudokuspoiler.com/sudoku/sudoku9',
-  headless: true, // Mettez à true pour le mode sans affichage
+  headless: true, // Toujours true pour Render
   timeout: 60000,
   maxAttempts: 3,
-  retryDelay: 10000
+  retryDelay: 10000,
+  // Variables d'environnement pour les credentials
+  phoneNumber: process.env.PHONE_NUMBER || '',
+  otpCode: process.env.OTP_CODE || '',
+  useCookies: process.env.USE_COOKIES === 'true'
 };
 
 class SudokuBot {
@@ -21,10 +26,22 @@ class SudokuBot {
       errors: 0,
       startTime: new Date()
     };
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
+    this.cookies = null;
+    this.loadCookies();
+  }
+
+  // Charger les cookies depuis le fichier JSON
+  loadCookies() {
+    try {
+      const cookiesPath = path.join(__dirname, 'cookies.json');
+      if (fs.existsSync(cookiesPath)) {
+        const cookiesData = fs.readFileSync(cookiesPath, 'utf8');
+        this.cookies = JSON.parse(cookiesData);
+        console.log('✅ Cookies chargés depuis cookies.json');
+      }
+    } catch (error) {
+      console.log('⚠️  Aucun fichier cookies.json trouvé ou erreur de lecture');
+    }
   }
 
   // Méthode pour les délais
@@ -36,15 +53,28 @@ class SudokuBot {
     try {
       console.log('🚀 Initialisation du bot Sudoku...');
       
-      this.browser = await puppeteer.launch({
-        headless: config.headless,
+      // Configuration pour Render
+      const launchOptions = {
+        headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage'
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
         ],
         timeout: config.timeout
-      });
+      };
+
+      // Utiliser Chrome sur Render si disponible
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+      }
+
+      this.browser = await puppeteer.launch(launchOptions);
 
       // Création des onglets
       this.pages.push(await this.browser.newPage());
@@ -56,6 +86,12 @@ class SudokuBot {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
         await page.setDefaultNavigationTimeout(config.timeout);
         await page.setDefaultTimeout(config.timeout);
+        
+        // Charger les cookies si disponibles
+        if (this.cookies && config.useCookies) {
+          await page.setCookie(...this.cookies);
+          console.log('✅ Cookies appliqués à la page');
+        }
       }
 
       console.log('✅ Bot initialisé avec succès');
@@ -71,7 +107,6 @@ class SudokuBot {
       if (this.browser) {
         await this.browser.close();
       }
-      this.rl.close();
       console.log('👋 Navigateur fermé');
     } catch (error) {
       console.error('Erreur lors de la fermeture:', error);
@@ -106,6 +141,12 @@ class SudokuBot {
         await page.goto(config.sudokuSite, { waitUntil: 'domcontentloaded' });
         await this.delay(2000);
 
+        // Si les cookies fonctionnent, on devrait être connecté
+        if (page.url().includes('/game')) {
+          console.log('✅ Connexion automatique réussie via cookies!');
+          return true;
+        }
+
         // Vérifier si on est sur la page de login
         if (!page.url().includes('/game')) {
           console.log('Redirection détectée, démarrage du processus de connexion...');
@@ -122,13 +163,14 @@ class SudokuBot {
 
           // Étape 2: Saisie du numéro de téléphone
           console.log('Étape 2: Saisie du numéro de téléphone');
-          const phoneNumber = await new Promise(resolve => {
-            this.rl.question('Entrez votre numéro de téléphone: ', answer => resolve(answer));
-          });
+          
+          if (!config.phoneNumber) {
+            throw new Error('PHONE_NUMBER non défini dans les variables d\'environnement');
+          }
           
           await page.type(
             'input[placeholder="Nimushiremwo inomero ya terefone"]',
-            phoneNumber,
+            config.phoneNumber,
             { delay: 50 }
           );
           await this.delay(1000);
@@ -143,11 +185,12 @@ class SudokuBot {
           
           // Étape 3: Saisie du code OTP
           console.log('Étape 3: Saisie du code OTP');
-          const otpCode = await new Promise(resolve => {
-            this.rl.question('Entrez le code OTP reçu: ', answer => resolve(answer));
-          });
           
-          await page.type('input[placeholder="OTP"]', otpCode, { delay: 50 });
+          if (!config.otpCode) {
+            throw new Error('OTP_CODE non défini dans les variables d\'environnement');
+          }
+          
+          await page.type('input[placeholder="OTP"]', config.otpCode, { delay: 50 });
           await this.delay(1000);
           
           // Bouton Emeza
@@ -159,6 +202,11 @@ class SudokuBot {
           
           console.log('Attente de 10 secondes...');
           await this.delay(10000);
+          
+          // Sauvegarder les cookies après connexion réussie
+          const cookies = await page.cookies();
+          fs.writeFileSync(path.join(__dirname, 'cookies_saved.json'), JSON.stringify(cookies, null, 2));
+          console.log('✅ Cookies sauvegardés');
           
           // Aller à la page de jeu
           console.log('Navigation vers la page de jeu...');
@@ -311,6 +359,12 @@ class SudokuBot {
           await this.delay(4000);
           this.stats.solved++;
           this.roundNumber++;
+          
+          // Log des stats toutes les 10 rounds
+          if (this.roundNumber % 10 === 0) {
+            console.log(`📊 Stats: ${this.stats.solved} sudokus résolus`);
+          }
+          
           return true;
         }
       } catch (error) {
@@ -355,7 +409,7 @@ class SudokuBot {
   }
 }
 
-// Gestion Ctrl+C
+// Gestion des signaux pour Render
 process.on('SIGINT', async () => {
   console.log('\n🛑 Arrêt par utilisateur');
   const bot = new SudokuBot();
@@ -363,6 +417,25 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Lancement
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Arrêt par système');
+  const bot = new SudokuBot();
+  await bot.close();
+  process.exit(0);
+});
+
+// Créer un serveur HTTP simple pour que Render pense que c'est une app web
+const http = require('http');
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Sudoku Bot is running!');
+});
+
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+  console.log(`🌐 Serveur démarré sur le port ${port}`);
+});
+
+// Lancement du bot
 const bot = new SudokuBot();
 bot.start();
